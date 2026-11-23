@@ -1470,7 +1470,7 @@ body.theme-dark .settings-switch .settings-slider{ background:#555; }
 
   <div class="cloud-save" style="margin-top:14px;padding-top:12px;border-top:1px dashed var(--border);">
     <div class="settings-section-title">☁️ 云存档（GitHub Gist）</div>
-    <p class="cloud-tip">存档存在 GitHub 服务器上。第一次使用需填写下方两项（<code>Gist ID</code> 留空会自动新建一份），之后自动记住，不用再填。</p>
+    <p class="cloud-tip">存档存在 GitHub 服务器上。第一次使用需填写下方两项（<code>Gist ID</code> 留空会自动新建一份），之后自动记住，不用再填。<b>下载云存档会用云端数据整体覆盖本地</b>，覆盖前会自动备份当前本地数据。</p>
     <input class="cloud-input" id="cloudGistId" type="text" placeholder="Gist ID（留空=新建）" autocomplete="off" spellcheck="false">
     <div class="cloud-token-wrap">
       <input class="cloud-input cloud-token-input" id="cloudToken" type="text" placeholder="GitHub Personal Access Token（ghp_... 开头）" autocomplete="off" spellcheck="false">
@@ -5923,11 +5923,13 @@ async function cloudUpload() {
     cloudSetStatus(e.message || String(e), 'err');
   }
 }
-// 下载云存档：从 gist 取回并合并到本地
+// 下载云存档：用云端数据【整体覆盖】本地（云存档语义就是"以云端为准"）
+// 覆盖前先把本地当前数据备份到 localStorage，误覆盖可在「导出数据」中重新导出找回
 async function cloudDownload() {
   var cfg = cloudConfig();
   if (!cfg.token) { cloudSetStatus('请先填写 Token', 'err'); return; }
   if (!cfg.gistId) { cloudSetStatus('请先填写 Gist ID，或先上传一次自动生成', 'warn'); return; }
+  if (!confirm('下载会用云端存档【整体替换】本地数据，确定继续？')) return;
   cloudSetStatus('正在下载…');
   try {
     var res = await cloudRequest(CLOUD_API + '/gists/' + encodeURIComponent(cfg.gistId), {
@@ -5938,13 +5940,14 @@ async function cloudDownload() {
     if (!file || !file.content) throw new Error('该存档内容为空，请先上传云存档');
     var remote = JSON.parse(file.content);
     if (!remote.words) throw new Error('存档格式错误');
-    var merged = cloudMerge(DB, remote);
-    DB = merged;
+    // 覆盖前备份本地当前数据，键名固定，多次备份只保留最近一份
+    try { localStorage.setItem('wordtool_cloud_backup', JSON.stringify(cloudStamp(DB))); } catch (e) {}
+    DB = Object.assign({ groups: [], labels: [], affixes: [], derivatives: [], words: [] }, remote);
     saveDB();
     renderHome();
     var savedAt = remote._savedAt ? new Date(remote._savedAt).toLocaleString() : '未知时间';
-    cloudSetStatus('⬇️ 云存档已下载并合并到本地（存档时间：' + savedAt + '，共 ' + remote.words.length + ' 个单词）', 'ok');
-    showToast('云存档已下载');
+    cloudSetStatus('⬇️ 云存档已下载并【整体覆盖】本地（存档时间：' + savedAt + '，共 ' + remote.words.length + ' 个单词）', 'ok');
+    showToast('云存档已下载并覆盖本地');
   } catch (e) {
     cloudSetStatus(e.message || String(e), 'err');
   }
