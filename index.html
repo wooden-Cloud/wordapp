@@ -5883,13 +5883,17 @@ function cloudMerge(localDB, remoteDB) {
 }
 // 给存档打上时间戳，便于"以时间为准"合并
 function cloudStamp(db) {
-  var out = JSON.parse(JSON.stringify(db));
+  // 序列化 DB 的全部数据（整体导出），并补齐各条目时间戳、记录保存时间
+  var out = JSON.parse(JSON.stringify(db || {}));
   var now = Date.now();
   ['groups', 'labels', 'affixes', 'derivatives'].forEach(function (k) {
-    (out[k] || []).forEach(function (it) { if (it && it.id && !it._mtime) it._mtime = now; });
+    if (!Array.isArray(out[k])) out[k] = [];
+    out[k].forEach(function (it) { if (it && it.id && !it._mtime) it._mtime = now; });
   });
-  (out.words || []).forEach(function (w) { if (w && w.id && !w._mtime) w._mtime = now; });
+  if (!Array.isArray(out.words)) out.words = [];
+  out.words.forEach(function (w) { if (w && w.id && !w._mtime) w._mtime = now; });
   out._savedAt = now;
+  out._version = 1;
   return out;
 }
 // 上传云存档：把当前本地数据打包存到 gist
@@ -5917,7 +5921,12 @@ async function cloudUpload() {
     }
     cloudSaveConfig({ token: cfg.token, gistId: gistId });
     document.getElementById('cloudGistId').value = gistId;
-    cloudSetStatus('☁️ 云存档已上传（' + new Date(payload._savedAt).toLocaleString() + '）', 'ok');
+    var total = (payload.words ? payload.words.length : 0) + ' 个单词 / ' +
+      (payload.groups ? payload.groups.length : 0) + ' 个分组 / ' +
+      (payload.labels ? payload.labels.length : 0) + ' 个标签' +
+      (payload.affixes ? payload.affixes.length : 0) +
+      (payload.derivatives ? payload.derivatives.length : 0 ? ' / 含词缀衍生' : '') ;
+    cloudSetStatus('☁️ 云存档已上传（全部数据已导出：' + new Date(payload._savedAt).toLocaleString() + '）', 'ok');
     showToast('云存档已上传');
   } catch (e) {
     cloudSetStatus(e.message || String(e), 'err');
@@ -5939,14 +5948,23 @@ async function cloudDownload() {
     var file = j.files && j.files[CLOUD_FILE];
     if (!file || !file.content) throw new Error('该存档内容为空，请先上传云存档');
     var remote = JSON.parse(file.content);
-    if (!remote.words) throw new Error('存档格式错误');
-    // 覆盖前备份本地当前数据，键名固定，多次备份只保留最近一份
+    if (!remote || typeof remote !== 'object') throw new Error('存档格式错误');
+    // 覆盖前备份本地当前全部数据，键名固定，多次备份只保留最近一份
     try { localStorage.setItem('wordtool_cloud_backup', JSON.stringify(cloudStamp(DB))); } catch (e) {}
-    DB = Object.assign({ groups: [], labels: [], affixes: [], derivatives: [], words: [] }, remote);
+    // 下载 = 整体覆盖当前全部内容（导出时存的是什么，这里就完整还原什么）
+    var base = { groups: [], labels: [], affixes: [], derivatives: [], words: [] };
+    var next = JSON.parse(JSON.stringify(base));
+    ['groups', 'labels', 'affixes', 'derivatives', 'words'].forEach(function (k) {
+      if (Array.isArray(remote[k])) next[k] = remote[k];
+    });
+    // 兜底：旧版存档若缺少 words 字段，视为无效
+    if (!Array.isArray(next.words)) throw new Error('存档格式错误');
+    DB = next;
+    migrateData();
     saveDB();
     renderHome();
     var savedAt = remote._savedAt ? new Date(remote._savedAt).toLocaleString() : '未知时间';
-    cloudSetStatus('⬇️ 云存档已下载并【整体覆盖】本地（存档时间：' + savedAt + '，共 ' + remote.words.length + ' 个单词）', 'ok');
+    cloudSetStatus('⬇️ 云存档已下载并【整体覆盖】本地全部数据（存档时间：' + savedAt + '，共 ' + DB.words.length + ' 个单词）', 'ok');
     showToast('云存档已下载并覆盖本地');
   } catch (e) {
     cloudSetStatus(e.message || String(e), 'err');
