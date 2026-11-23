@@ -3,13 +3,6 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<meta name="theme-color" content="#4361ee">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="单词背诵">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="description" content="本地优先的单词背诵工具，支持词库管理、分组、词缀、等级背诵与进度导出导入。">
-<meta name="robots" content="noindex,nofollow">
 <title>单词背诵工具</title>
 <style>
 :root {
@@ -375,42 +368,6 @@ select[multiple]#wordGroup option:checked { background:var(--primary) linear-gra
 .theme-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
 .theme-grid .theme-btn { width:38px; height:38px; }
 .theme-panel-footer { margin-top:10px; padding-top:8px; border-top:1px solid var(--border); }
-/* ===== 云存档（GitHub Gist） ===== */
-.cloud-save input.cloud-input {
-  width:100%; padding:8px 10px; margin-bottom:6px; border:1px solid var(--border);
-  border-radius:9px; font-size:13px; box-sizing:border-box; outline:none;
-  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
-}
-.cloud-save input.cloud-input:focus { border-color:var(--primary); }
-/* Token 输入框：明文可粘贴，右侧内嵌眼睛按钮切换显隐 */
-.cloud-save .cloud-token-wrap { position:relative; margin-bottom:6px; }
-.cloud-save .cloud-token-wrap .cloud-token-input { width:100%; padding:8px 40px 8px 10px; margin-bottom:0; }
-.cloud-save .cloud-token-toggle {
-  position:absolute; top:50%; right:6px; transform:translateY(-50%);
-  width:30px; height:30px; border:none; border-radius:8px; background:transparent;
-  cursor:pointer; font-size:15px; line-height:1; display:flex; align-items:center; justify-content:center;
-  transition:background 0.15s;
-}
-.cloud-save .cloud-token-toggle:active { background:var(--light-gray); }
-.cloud-save .cloud-tip { font-size:11px; color:var(--gray); line-height:1.6; margin:0 0 10px 0; }
-.cloud-save .cloud-tip code {
-  background:var(--light-gray); padding:1px 5px; border-radius:5px; font-size:11px;
-  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
-}
-.cloud-actions { display:flex; gap:8px; flex-wrap:wrap; }
-/* 云存档区块与删除按钮：手机端更好点按 */
-.cloud-save .cloud-actions:last-of-type { margin-top:10px; padding-top:10px; border-top:1px dashed var(--border); }
-.cloud-save .btn-danger.btn-sm { min-height:36px; }
-
-.cloud-actions .btn { flex:1 1 auto; min-width:96px; font-size:13px; padding:9px 6px; }
-.cloud-status {
-  margin-top:10px; font-size:12px; color:var(--gray); line-height:1.6;
-  min-height:16px; word-break:break-all;
-}
-.cloud-status.ok { color:#0a7a4a; }
-.cloud-status.err { color:var(--danger); }
-.cloud-status.warn { color:#b57600; }
-
 .theme-mode-label { font-size:12px; color:var(--gray); display:flex; align-items:center; gap:6px; }
 
 @media (max-width:400px){
@@ -1165,16 +1122,6 @@ body.theme-dark .settings-switch .settings-slider{ background:#555; }
 .rs-count-row input:focus{ border-color:var(--primary); }
 .rs-count-note{ font-size:12px; color:var(--gray); margin-top:6px; text-align:right; }
 .rs-err{ color:#e74c3c; font-size:12px; margin-top:8px; min-height:1.3em; }
-
-/* 设置面板：手机端可滚动，避免底部「删除云端存档」等内容被屏幕截断 */
-.theme-panel {
-  max-height:calc(100vh - 56px - 16px);
-  max-height:calc(100dvh - 56px - 16px);
-  overflow-y:auto; -webkit-overflow-scrolling:touch;
-  overscroll-behavior:contain;
-}
-/* 面板标题在滚动时吸顶，始终可见 */
-.theme-panel-title { position:sticky; top:0; z-index:2; background:#fff; padding:2px 0 8px; border-bottom:1px solid var(--border); margin-bottom:10px; }
 </style>
 </head>
 <body>
@@ -1466,24 +1413,6 @@ body.theme-dark .settings-switch .settings-slider{ background:#555; }
       <p style="font-size:12px;color:var(--gray);margin:0 0 10px 0;">点击即下载，文件名固定为「单词进度.json」（不附加日期，多次导出会覆盖同一份）</p>
     </div>
     <button class="btn btn-primary btn-block" style="margin-top:10px;font-size:13px;" onclick="exportData()">📤 立即导出</button>
-  </div>
-
-  <div class="cloud-save" style="margin-top:14px;padding-top:12px;border-top:1px dashed var(--border);">
-    <div class="settings-section-title">☁️ 云存档（GitHub Gist）</div>
-    <p class="cloud-tip">存档存在 GitHub 服务器上。第一次使用需填写下方两项（<code>Gist ID</code> 留空会自动新建一份），之后自动记住，不用再填。</p>
-    <input class="cloud-input" id="cloudGistId" type="text" placeholder="Gist ID（留空=新建）" autocomplete="off" spellcheck="false">
-    <div class="cloud-token-wrap">
-      <input class="cloud-input cloud-token-input" id="cloudToken" type="text" placeholder="GitHub Personal Access Token（ghp_... 开头）" autocomplete="off" spellcheck="false">
-      <button type="button" class="cloud-token-toggle" id="cloudTokenToggle" onclick="toggleCloudToken()" title="显示/隐藏 Token">🙈</button>
-    </div>
-    <div class="cloud-actions">
-      <button class="btn btn-primary" onclick="cloudUpload()">☁️ 上传云存档</button>
-      <button class="btn" onclick="cloudDownload()">⬇️ 下载云存档</button>
-    </div>
-    <div class="cloud-actions" style="margin-top:8px;">
-      <button class="btn btn-danger btn-sm" onclick="cloudDelete()">🗑️ 删除云端存档</button>
-    </div>
-    <div class="cloud-status" id="cloudStatus"></div>
   </div>
 </div>
 
@@ -5773,209 +5702,6 @@ document.addEventListener('keydown', e=>{
   }
 });
 
-// ========== 云存档（GitHub Gist）==========
-// 说明：存档存在 GitHub Gist（免费、官方支持浏览器跨域调用）。
-// 存档内容 = 当前 localStorage 里的全部词库数据，写入一个 key 为 "__wordtool_save__" 的 gist 文件。
-const CLOUD_API = 'https://api.github.com';
-const CLOUD_FILE = '__wordtool_save__';
-
-function cloudConfig() {
-  return {
-    gistId: (document.getElementById('cloudGistId').value || '').trim(),
-    token: (document.getElementById('cloudToken').value || '').trim()
-  };
-}
-// Token 输入框显隐切换：默认明文便于粘贴核对，点眼睛按钮可遮住防偷窥
-function toggleCloudToken() {
-  var el = document.getElementById('cloudToken');
-  var btn = document.getElementById('cloudTokenToggle');
-  if (!el) return;
-  if (el.type === 'password') {
-    el.type = 'text';
-    if (btn) btn.textContent = '🙈';
-  } else {
-    el.type = 'password';
-    if (btn) btn.textContent = '👁️';
-  }
-}
-function cloudSaveConfig(cfg) {
-  try {
-    if (cfg.token) localStorage.setItem('wordtool_cloud_token', cfg.token);
-    if (cfg.gistId) localStorage.setItem('wordtool_cloud_gistId', cfg.gistId);
-  } catch (e) {}
-}
-function cloudLoadConfig() {
-  var g = '', t = '';
-  try { g = localStorage.getItem('wordtool_cloud_gistId') || ''; } catch (e) {}
-  try { t = localStorage.getItem('wordtool_cloud_token') || ''; } catch (e) {}
-  return { gistId: g, token: t };
-}
-function cloudSetStatus(msg, cls) {
-  var el = document.getElementById('cloudStatus');
-  if (!el) return;
-  el.textContent = msg || '';
-  el.className = 'cloud-status' + (cls ? ' ' + cls : '');
-}
-function cloudHeaders(token, extra) {
-  var h = {
-    'Accept': 'application/vnd.github+json',
-    'Content-Type': 'application/json',
-    'X-GitHub-Api-Version': '2022-11-28'
-  };
-  if (token) h['Authorization'] = 'Bearer ' + token;
-  if (extra) Object.keys(extra).forEach(function (k) { h[k] = extra[k]; });
-  return h;
-}
-// 错误处理：把 fetch 失败（含跨域拦截）转成可读提示
-async function cloudRequest(url, opts) {
-  var res;
-  try {
-    res = await fetch(url, opts);
-  } catch (e) {
-    throw new Error('网络请求失败：浏览器拦截了跨域请求（' + (e && e.message ? e.message : e) + '）。请确认本工具是以 https:// 网站形式打开，而非本地文件。');
-  }
-  if (!res.ok) {
-    var txt = '';
-    try { var j = await res.json(); txt = (j && (j.message || j.documentation_url)) ? j.message : ''; } catch (e) {}
-    if (res.status === 401 || res.status === 403) {
-      throw new Error('认证失败（' + res.status + '）：Token 无效或缺少 gist 权限，请重新生成。' + (txt ? ' ' + txt : ''));
-    }
-    if (res.status === 404) throw new Error('找不到该存档：Gist ID 错误或存档已被删除。');
-    throw new Error('请求失败（' + res.status + '）' + (txt ? '：' + txt : ''));
-  }
-  return res;
-}
-// 以时间为准：逐词比较时间戳，云端新用云端、本地新保留本地，新词合并
-function cloudMerge(localDB, remoteDB) {
-  if (!remoteDB || !remoteDB.words) return localDB;
-  var local = JSON.parse(JSON.stringify(localDB));
-  // 元数据时间戳比较：分组/标签/词缀等，整体取更新的一份
-  var metaKeys = ['groups', 'labels', 'affixes', 'derivatives'];
-  metaKeys.forEach(function (k) {
-    if (!Array.isArray(local[k])) local[k] = [];
-    if (!Array.isArray(remoteDB[k])) return;
-    // 本地没有 remote 里的新分组等：合并
-    var localMap = {};
-    local[k].forEach(function (it) { if (it && it.id) localMap[it.id] = it; });
-    remoteDB[k].forEach(function (it) {
-      if (!it || !it.id) return;
-      var lt = +(localMap[it.id] && localMap[it.id]._mtime) || 0;
-      var rt = +(it._mtime) || 0;
-      if (!localMap[it.id]) localMap[it.id] = it;
-      else if (rt > lt) localMap[it.id] = it;
-    });
-    local[k] = Object.keys(localMap).map(function (id) { return localMap[id]; });
-  });
-  // 单词：逐词按 _mtime 合并
-  var wMap = {};
-  (local.words || []).forEach(function (w) { if (w && w.id) wMap[w.id] = w; });
-  (remoteDB.words || []).forEach(function (w) {
-    if (!w || !w.id) return;
-    var lt = +(wMap[w.id] && wMap[w.id]._mtime) || 0;
-    var rt = +(w._mtime) || 0;
-    if (!wMap[w.id]) wMap[w.id] = w;           // 新词：用云端
-    else if (rt > lt) wMap[w.id] = w;          // 云端更新：用云端
-    else if (rt === 0 && lt === 0) wMap[w.id] = w; // 双方都无时间戳：云端为准（覆盖）
-  });
-  local.words = Object.keys(wMap).map(function (id) { return wMap[id]; });
-  return local;
-}
-// 给存档打上时间戳，便于"以时间为准"合并
-function cloudStamp(db) {
-  var out = JSON.parse(JSON.stringify(db));
-  var now = Date.now();
-  ['groups', 'labels', 'affixes', 'derivatives'].forEach(function (k) {
-    (out[k] || []).forEach(function (it) { if (it && it.id && !it._mtime) it._mtime = now; });
-  });
-  (out.words || []).forEach(function (w) { if (w && w.id && !w._mtime) w._mtime = now; });
-  out._savedAt = now;
-  return out;
-}
-// 上传云存档：把当前本地数据打包存到 gist
-async function cloudUpload() {
-  var cfg = cloudConfig();
-  if (!cfg.token) { cloudSetStatus('请先填写 GitHub Personal Access Token', 'err'); return; }
-  cloudSetStatus('正在上传…');
-  try {
-    var payload = cloudStamp(DB);
-    var body = { public: false, files: {}, description: '单词背诵工具云存档（自动同步，勿手动修改）' };
-    body.files[CLOUD_FILE] = { content: JSON.stringify(payload) };
-    var gistId = cfg.gistId;
-    if (gistId) {
-      // 更新已有 gist
-      await cloudRequest(CLOUD_API + '/gists/' + encodeURIComponent(gistId), {
-        method: 'PATCH', headers: cloudHeaders(cfg.token), body: JSON.stringify(body)
-      });
-    } else {
-      // 新建 gist，成功后记住返回的 id
-      var res = await cloudRequest(CLOUD_API + '/gists', {
-        method: 'POST', headers: cloudHeaders(cfg.token), body: JSON.stringify(body)
-      });
-      var j = await res.json();
-      gistId = j.id;
-    }
-    cloudSaveConfig({ token: cfg.token, gistId: gistId });
-    document.getElementById('cloudGistId').value = gistId;
-    cloudSetStatus('☁️ 云存档已上传（' + new Date(payload._savedAt).toLocaleString() + '）', 'ok');
-    showToast('云存档已上传');
-  } catch (e) {
-    cloudSetStatus(e.message || String(e), 'err');
-  }
-}
-// 下载云存档：从 gist 取回并合并到本地
-async function cloudDownload() {
-  var cfg = cloudConfig();
-  if (!cfg.token) { cloudSetStatus('请先填写 Token', 'err'); return; }
-  if (!cfg.gistId) { cloudSetStatus('请先填写 Gist ID，或先上传一次自动生成', 'warn'); return; }
-  cloudSetStatus('正在下载…');
-  try {
-    var res = await cloudRequest(CLOUD_API + '/gists/' + encodeURIComponent(cfg.gistId), {
-      headers: cloudHeaders(cfg.token)
-    });
-    var j = await res.json();
-    var file = j.files && j.files[CLOUD_FILE];
-    if (!file || !file.content) throw new Error('该存档内容为空，请先上传云存档');
-    var remote = JSON.parse(file.content);
-    if (!remote.words) throw new Error('存档格式错误');
-    var merged = cloudMerge(DB, remote);
-    DB = merged;
-    saveDB();
-    renderHome();
-    var savedAt = remote._savedAt ? new Date(remote._savedAt).toLocaleString() : '未知时间';
-    cloudSetStatus('⬇️ 云存档已下载并合并到本地（存档时间：' + savedAt + '，共 ' + remote.words.length + ' 个单词）', 'ok');
-    showToast('云存档已下载');
-  } catch (e) {
-    cloudSetStatus(e.message || String(e), 'err');
-  }
-}
-// 删除云端存档
-async function cloudDelete() {
-  var cfg = cloudConfig();
-  if (!cfg.token || !cfg.gistId) { cloudSetStatus('需要 Token 和 Gist ID 才能删除', 'warn'); return; }
-  if (!confirm('确定删除云端这份存档吗？此操作不可恢复。')) return;
-  cloudSetStatus('正在删除…');
-  try {
-    await cloudRequest(CLOUD_API + '/gists/' + encodeURIComponent(cfg.gistId), {
-      method: 'DELETE', headers: cloudHeaders(cfg.token)
-    });
-    cloudSaveConfig({ token: cfg.token, gistId: '' });
-    document.getElementById('cloudGistId').value = '';
-    cloudSetStatus('🗑️ 云端存档已删除', 'ok');
-    showToast('云端存档已删除');
-  } catch (e) {
-    cloudSetStatus(e.message || String(e), 'err');
-  }
-}
-// 打开设置面板时回填已保存的 Token / Gist ID
-function cloudFillConfig() {
-  var cfg = cloudLoadConfig();
-  var idEl = document.getElementById('cloudGistId');
-  var tkEl = document.getElementById('cloudToken');
-  if (idEl && cfg.gistId) idEl.value = cfg.gistId;
-  if (tkEl && cfg.token) tkEl.value = cfg.token;
-  if (cfg.gistId && cfg.token) cloudSetStatus('已记住存档配置，可直接上传/下载', '');
-}
-
 // ========== 导入导出 ==========
 // 导出：文件名固定为「单词进度.json」，不带日期，不询问、不自定义
 function exportData() {
@@ -6057,7 +5783,6 @@ document.addEventListener('DOMContentLoaded', function() {
     } else {
       panel.classList.add('show');
       try{ syncSettingsControls(); }catch(e){}
-      try{ cloudFillConfig(); }catch(e){}
     }
   });
 });
