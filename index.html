@@ -5533,38 +5533,39 @@ function confirmRandomScope(){
   // 按模式构造抽取池
   let pool = nonMax.slice();
   if(mode === 'level'){
-    // 按背诵次数升序，次数相同时按英文稳定排序
-    pool.sort((a,b)=>{
-      const ca = getWordStudyCount(a), cb = getWordStudyCount(b);
-      if(ca !== cb) return ca - cb;
-      return String(a.en||'').localeCompare(String(b.en||''), 'zh-Hans-CN-u-co-dict');
-    });
-    // 按次数分桶，逐桶轮流抽：保证低次数词一定先被抽到，桶内随机
+    // 分层优先 + 层内随机（不放回）：
+    // 第 1 步 把所有未满级词按「背诵次数」分桶（次数=0 / 1 / 2 …），桶内先打乱保证随机；
+    // 第 2 步 从次数最少的桶开始，逐桶随机抽取，把该桶抽空再进下一桶；
+    // 第 3 步 任一桶内若已被抽够 n 个，则立即停止，剩余桶不再被触及。
+    // 这样「次数越少一定越优先被背到」，同时全程随机、绝不重复。
     const buckets = [];
-    let i = 0;
-    while(i < pool.length){
-      let j = i + 1;
-      while(j < pool.length && getWordStudyCount(pool[j]) === getWordStudyCount(pool[i])) j++;
-      buckets.push(pool.slice(i, j));
-      i = j;
-    }
-    const picked = [];
-    const idx = buckets.map(()=>0);
-    let guard = pool.length * 3;
-    while(picked.length < n && guard-- > 0){
-      let advanced = false;
-      for(let b = 0; b < buckets.length && picked.length < n; b++){
-        const k = idx[b];
-        if(k < buckets[b].length){
-          // 桶内随机：Fisher-Yates 风格
-          const ri = k + Math.floor(Math.random() * (buckets[b].length - k));
-          const tmp = buckets[b][k]; buckets[b][k] = buckets[b][ri]; buckets[b][ri] = tmp;
-          picked.push(buckets[b][k]);
-          idx[b] = k + 1;
-          advanced = true;
+    (function(){
+      const sorted = nonMax.slice().sort((a, b) => getWordStudyCount(a) - getWordStudyCount(b));
+      let i = 0;
+      while(i < sorted.length){
+        let j = i + 1;
+        while(j < sorted.length && getWordStudyCount(sorted[j]) === getWordStudyCount(sorted[i])) j++;
+        // 桶内洗牌，保证随机性
+        const sub = sorted.slice(i, j);
+        for(let k = sub.length - 1; k > 0; k--){
+          const m = Math.floor(Math.random() * (k + 1));
+          const tmp = sub[k]; sub[k] = sub[m]; sub[m] = tmp;
         }
+        buckets.push(sub);
+        i = j;
       }
-      if(!advanced) break;
+    })();
+    const picked = [];
+    let bi = 0;
+    // 最坏情况保护：桶数 * 单桶最大长度，避免极端分布下死循环
+    let guard = buckets.reduce((s, b) => s + b.length, 0) + n;
+    while(picked.length < n && bi < buckets.length && guard-- > 0){
+      const bucket = buckets[bi];
+      // 从当前桶里随机取一个
+      const ri = Math.floor(Math.random() * bucket.length);
+      picked.push(bucket[ri]);
+      bucket.splice(ri, 1);       // 不放回，杜绝同一词重复
+      if(bucket.length === 0) bi++; // 该桶抽空，进入次数更高的下一桶
     }
     pool = picked;
   } else {
@@ -6132,7 +6133,7 @@ renderHome();
         <input type="radio" name="rsMode" value="level">
         <div class="rs-mode-body">
           <div class="rs-mode-title">📉 按熟练度随机背诵 n 个</div>
-          <div class="rs-mode-desc">优先抽取背诵次数少的单词，每个熟练度层级内再随机，低熟练度一定先背到。</div>
+          <div class="rs-mode-desc">加权随机抽取且不放回：背诵次数越少被选中的概率越高，全程随机、不会重复抽到同一个词。</div>
         </div>
       </label>
     </div>
