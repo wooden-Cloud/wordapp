@@ -382,12 +382,26 @@ select[multiple]#wordGroup option:checked { background:var(--primary) linear-gra
   font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
 }
 .cloud-save input.cloud-input:focus { border-color:var(--primary); }
+/* Token 输入框：明文可粘贴，右侧内嵌眼睛按钮切换显隐 */
+.cloud-save .cloud-token-wrap { position:relative; margin-bottom:6px; }
+.cloud-save .cloud-token-wrap .cloud-token-input { width:100%; padding:8px 40px 8px 10px; margin-bottom:0; }
+.cloud-save .cloud-token-toggle {
+  position:absolute; top:50%; right:6px; transform:translateY(-50%);
+  width:30px; height:30px; border:none; border-radius:8px; background:transparent;
+  cursor:pointer; font-size:15px; line-height:1; display:flex; align-items:center; justify-content:center;
+  transition:background 0.15s;
+}
+.cloud-save .cloud-token-toggle:active { background:var(--light-gray); }
 .cloud-save .cloud-tip { font-size:11px; color:var(--gray); line-height:1.6; margin:0 0 10px 0; }
 .cloud-save .cloud-tip code {
   background:var(--light-gray); padding:1px 5px; border-radius:5px; font-size:11px;
   font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
 }
 .cloud-actions { display:flex; gap:8px; flex-wrap:wrap; }
+/* 云存档区块与删除按钮：手机端更好点按 */
+.cloud-save .cloud-actions:last-of-type { margin-top:10px; padding-top:10px; border-top:1px dashed var(--border); }
+.cloud-save .btn-danger.btn-sm { min-height:36px; }
+
 .cloud-actions .btn { flex:1 1 auto; min-width:96px; font-size:13px; padding:9px 6px; }
 .cloud-status {
   margin-top:10px; font-size:12px; color:var(--gray); line-height:1.6;
@@ -1151,6 +1165,16 @@ body.theme-dark .settings-switch .settings-slider{ background:#555; }
 .rs-count-row input:focus{ border-color:var(--primary); }
 .rs-count-note{ font-size:12px; color:var(--gray); margin-top:6px; text-align:right; }
 .rs-err{ color:#e74c3c; font-size:12px; margin-top:8px; min-height:1.3em; }
+
+/* 设置面板：手机端可滚动，避免底部「删除云端存档」等内容被屏幕截断 */
+.theme-panel {
+  max-height:calc(100vh - 56px - 16px);
+  max-height:calc(100dvh - 56px - 16px);
+  overflow-y:auto; -webkit-overflow-scrolling:touch;
+  overscroll-behavior:contain;
+}
+/* 面板标题在滚动时吸顶，始终可见 */
+.theme-panel-title { position:sticky; top:0; z-index:2; background:#fff; padding:2px 0 8px; border-bottom:1px solid var(--border); margin-bottom:10px; }
 </style>
 </head>
 <body>
@@ -1448,7 +1472,10 @@ body.theme-dark .settings-switch .settings-slider{ background:#555; }
     <div class="settings-section-title">☁️ 云存档（GitHub Gist）</div>
     <p class="cloud-tip">存档存在 GitHub 服务器上。第一次使用需填写下方两项（<code>Gist ID</code> 留空会自动新建一份），之后自动记住，不用再填。</p>
     <input class="cloud-input" id="cloudGistId" type="text" placeholder="Gist ID（留空=新建）" autocomplete="off" spellcheck="false">
-    <input class="cloud-input" id="cloudToken" type="password" placeholder="GitHub Personal Access Token" autocomplete="off" spellcheck="false">
+    <div class="cloud-token-wrap">
+      <input class="cloud-input cloud-token-input" id="cloudToken" type="text" placeholder="GitHub Personal Access Token（ghp_... 开头）" autocomplete="off" spellcheck="false">
+      <button type="button" class="cloud-token-toggle" id="cloudTokenToggle" onclick="toggleCloudToken()" title="显示/隐藏 Token">🙈</button>
+    </div>
     <div class="cloud-actions">
       <button class="btn btn-primary" onclick="cloudUpload()">☁️ 上传云存档</button>
       <button class="btn" onclick="cloudDownload()">⬇️ 下载云存档</button>
@@ -5757,6 +5784,19 @@ function cloudConfig() {
     gistId: (document.getElementById('cloudGistId').value || '').trim(),
     token: (document.getElementById('cloudToken').value || '').trim()
   };
+}
+// Token 输入框显隐切换：默认明文便于粘贴核对，点眼睛按钮可遮住防偷窥
+function toggleCloudToken() {
+  var el = document.getElementById('cloudToken');
+  var btn = document.getElementById('cloudTokenToggle');
+  if (!el) return;
+  if (el.type === 'password') {
+    el.type = 'text';
+    if (btn) btn.textContent = '🙈';
+  } else {
+    el.type = 'password';
+    if (btn) btn.textContent = '👁️';
+  }
 }
 function cloudSaveConfig(cfg) {
   try {
