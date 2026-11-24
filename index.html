@@ -1307,6 +1307,7 @@ body.theme-dark .settings-switch .settings-slider{ background:#555; }
       <div class="order-toggle">
         <button id="orderAscBtn" class="order-btn active" title="按字母 A→Z 排序">A→Z</button>
         <button id="orderShuffleBtn" class="order-btn" title="随机打乱">🔀</button>
+        <button id="orderLevelBtn" class="order-btn" title="按熟练度排序（再次点击切换升/降）">熟练度 <span id="orderLevelArrow" style="font-size:11px;">↑</span></button>
       </div>
       <button class="btn btn-sm btn-outline" id="wordsMultiEnter" onclick="enterMultiSel()">☑️ 批量删除单词</button>
     </div>
@@ -4482,10 +4483,17 @@ function renderWords() {
   }
   document.getElementById('pageTitle').textContent = title;
 
-  // 单词页排序：正序=A→Z 字典序，乱序=随机打乱
+  // 单词页排序：asc=A→Z 字典序 / shuffle=随机打乱 / levelAsc=熟练度由低到高 / levelDesc=熟练度由高到低
   const order = (localStorage.getItem('wordPageOrder')||'asc');
   if(order==='shuffle'){
     words = words.slice().sort(()=>Math.random()-0.5);
+  }else if(order==='levelAsc' || order==='levelDesc'){
+    // 主序：背诵次数；次序：A→Z 字典序（保证同次数时顺序稳定、可预期）
+    words = words.slice().sort((a,b)=>{
+      const ca = Number(getWordStudyCount(a)) || 0, cb = Number(getWordStudyCount(b)) || 0;
+      if(ca !== cb) return order==='levelAsc' ? (ca - cb) : (cb - ca);
+      return String(a.en||'').localeCompare(String(b.en||''),'zh-Hans-CN-u-co-dict');
+    });
   }else{
     words = words.slice().sort((a,b)=>String(a.en||'').localeCompare(String(b.en||''),'zh-Hans-CN-u-co-dict'));
   }
@@ -6084,19 +6092,42 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 });
 
-// 单词页排序切换
+// 单词页排序切换：A→Z / 🔀随机 / 熟练度（可切换 由低到高 ⇄ 由高到低）
 (function(){
-  var ascBtn = document.getElementById('orderAscBtn');
-  var shufBtn = document.getElementById('orderShuffleBtn');
-  if(!ascBtn || !shufBtn) return;
+  var ascBtn   = document.getElementById('orderAscBtn');
+  var shufBtn  = document.getElementById('orderShuffleBtn');
+  var lvBtn    = document.getElementById('orderLevelBtn');
+  var lvArrow  = document.getElementById('orderLevelArrow');
+  if(!ascBtn || !shufBtn || !lvBtn) return;
+
+  function paint(o){
+    // 同步三个按钮的高亮状态 + 熟练度箭头方向
+    ascBtn.classList.toggle('active',  o === 'asc');
+    shufBtn.classList.toggle('active', o === 'shuffle');
+    lvBtn.classList.toggle('active',   o === 'levelAsc' || o === 'levelDesc');
+    if(lvArrow) lvArrow.textContent = (o === 'levelDesc') ? '↓' : '↑';
+    lvBtn.title = (o === 'levelDesc')
+      ? '按熟练度排序：当前 由高到低，点击切换为 由低到高'
+      : '按熟练度排序：当前 由低到高，点击切换为 由高到低';
+  }
+
   function applyWordOrder(o){
     localStorage.setItem('wordPageOrder', o);
-    if(o==='shuffle'){ shufBtn.classList.add('active'); ascBtn.classList.remove('active'); }
-    else { ascBtn.classList.add('active'); shufBtn.classList.remove('active'); }
+    paint(o);
     renderWords();
   }
+
   ascBtn.addEventListener('click', function(){ applyWordOrder('asc'); });
   shufBtn.addEventListener('click', function(){ applyWordOrder('shuffle'); });
+  lvBtn.addEventListener('click', function(){
+    var cur = localStorage.getItem('wordPageOrder') || 'asc';
+    // 已在熟练度模式：反向切换；否则进入默认的「由低到高」
+    var next = (cur === 'levelAsc') ? 'levelDesc' : 'levelAsc';
+    applyWordOrder(next);
+  });
+
+  // 初始化：恢复上次排序状态（含箭头方向）
+  paint(localStorage.getItem('wordPageOrder') || 'asc');
 })();
 
 // 背诵范围：初始化时绑定全选、刷新描述
@@ -6118,13 +6149,7 @@ function loadTheme() {
 // ========== 初始化 ==========
 loadDB();
 loadTheme();
-(function(){
-  var o = localStorage.getItem('wordPageOrder')||'asc';
-  if(o==='shuffle'){
-    var sBtn=document.getElementById('orderShuffleBtn'), aBtn=document.getElementById('orderAscBtn');
-    if(sBtn&&aBtn){ sBtn.classList.add('active'); aBtn.classList.remove('active'); }
-  }
-})();
+// 单词页排序按钮状态恢复已由上方排序切换模块内的 paint() 统一处理（含熟练度箭头方向），此处不再重复操作
 renderHome();
 
 ;(function(){
