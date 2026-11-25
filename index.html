@@ -5747,6 +5747,9 @@ function showAnswer() {
 function markWord(remembered) {
   const w = studyQueue[studyIndex];
   if(!w) return;
+  // 防重复计分：同一张卡只允许记一次分（键盘快捷键 / 连点按钮都会重复触发本函数）
+  if(studyCurrentShown === false) return;
+  studyCurrentShown = false;
   // 等级积分：记住 +1，忘记 −1（最低 0，不倒扣成负分）；等级由净得分决定
   if(!w.studyCount) w.studyCount = 0;
   const fc = getFc(w, studyMode);
@@ -5759,7 +5762,6 @@ function markWord(remembered) {
   }
   saveDB();
   studyIndex++;
-  studyCurrentShown = false;
   renderStudyCard();
   renderRanking();
 }
