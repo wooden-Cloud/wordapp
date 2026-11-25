@@ -1948,6 +1948,7 @@ let DB = {
   derivatives: [],   // {id, name, wordIds:[]}
   words: []         // {id, groupId, groupIds:[], en, phonetic, poses:[{pos, meaning, inflection:{}}], phrases:[], examples:[], labels:[], affixes:[], forgetCount, derivativeGroupId, fav:false, fc:{cn2en:0, en2cn:0}}
                         // fc.cn2en / fc.en2cn：各模式的「净忘次数」（小数）= 忘记次数×1 − 记住次数×0.5；显示/排序用向上取整 Math.ceil，为 0 时不再减
+                        // studyCount：等级净得分（记住 +1 / 忘记 −1，最低 0），不再是累计次数
 };
 // 兼容层：一个单词可同时属于多个分组，用 groupIds:[] 记录；旧数据只有单值 groupId
 function migrateData() {
@@ -2023,16 +2024,16 @@ function getFc(w, mode){ if(!w.fc) w.fc={cn2en:0, en2cn:0}; if(typeof w.fc[mode]
 // ========== 单词等级制度 ==========
 // 等级阈值：背诵次数对应等级
 // 0次=0级, 1次=1级, 10次=2级, 50次=3级, 100次=4级, 500次=5级, 1000次=6级, 5000次+=7级
-const LEVEL_THRESHOLDS = [0, 1, 5, 10, 15, 20, 25, 30]; // 0未背诵 1入门 2熟悉 3熟练 4精通 5大师 6专家 7满级
-const LEVEL_NAMES = ['未背诵', '入门', '熟悉', '熟练', '精通', '大师', '专家', '满级']; // 满级 = 30次背诵
+const LEVEL_THRESHOLDS = [0, 2, 6, 11, 16, 21, 26, 32]; // 0未背诵 1入门 2熟悉 3熟练 4精通 5大师 6专家 7满级（净得分：记住+1 忘记−1）
+const LEVEL_NAMES = ['未背诵', '入门', '熟悉', '熟练', '精通', '大师', '专家', '满级']; // 满级 = 净得分 32
 
 // 获取单词的总背诵次数（两个方向之和）
 function getWordStudyCount(w) {
   if (!w) return 0;
   const fc = getFc(w, 'cn2en');
   const fc2 = getFc(w, 'en2cn');
-  // 忘记次数存储的是净忘次数（可能为小数），背诵次数 = 总操作次数
-  // 用 forgetCount 记录总背诵次数，如果没有则通过净忘次数估算
+  // studyCount 现在是「等级净得分」：记住 +1、忘记 −1，最低 0
+  // 没有独立的累计操作次数字段，这里直接返回净得分（等级、进度条、排序都以此为准）
   return (w.studyCount || 0);
 }
 
@@ -2061,7 +2062,7 @@ function getNextLevelReq(level) {
   return LEVEL_THRESHOLDS[level + 1];
 }
 
-// 获取当前等级已背诵次数（用于进度条）
+// 获取当前等级进度（用于进度条）：按净得分在当前档位区间的位置计算
 function getLevelProgress(w) {
   const count = getWordStudyCount(w);
   const level = getWordLevel(w);
@@ -2087,13 +2088,13 @@ function renderLevelOverview() {
     const lv = getWordLevel(w);
     counts[lv]++;
   });
-  // 总背诵次数
+  // 等级净得分合计（记住 +1 / 忘记 −1）
   const totalStudy = DB.words.reduce((s, w) => s + (w.studyCount || 0), 0);
   const studiedWords = DB.words.filter(w => (w.studyCount || 0) > 0).length;
   
   let html = '<div style="background:#fff;border-radius:12px;padding:12px;box-shadow:var(--card-shadow);margin-bottom:12px;">';
   html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">';
-  html += '<span style="font-size:13px;color:var(--gray);">总单词 ' + DB.words.length + ' 个 · 已背诵 ' + studiedWords + ' 个 · 累计 ' + totalStudy + ' 次</span>';
+  html += '<span style="font-size:13px;color:var(--gray);">总单词 ' + DB.words.length + ' 个 · 有得分 ' + studiedWords + ' 个 · 净得分合计 ' + totalStudy + ' 分</span>';
   html += '</div>';
   html += '<div style="display:flex;flex-wrap:wrap;gap:6px;">';
   for (let i = 1; i <= 7; i++) {
@@ -2144,8 +2145,8 @@ function showLevelStats() {
   html += '<div style="text-align:center;margin-bottom:12px;font-size:16px;font-weight:700;">⭐ 单词等级统计</div>';
   html += '<div style="background:var(--light-gray);border-radius:8px;padding:10px;margin-bottom:10px;">';
   html += '<div>总单词数：<b>' + DB.words.length + '</b></div>';
-  html += '<div>已背诵单词：<b>' + DB.words.filter(w => (w.studyCount || 0) > 0).length + '</b></div>';
-  html += '<div>累计背诵次数：<b>' + totalStudy + '</b></div>';
+  html += '<div>有得分单词：<b>' + DB.words.filter(w => (w.studyCount || 0) > 0).length + '</b></div>';
+  html += '<div>等级净得分合计：<b>' + totalStudy + '</b> 分</div>';
   html += '</div>';
   for (let i = 1; i <= 7; i++) {
     const pct = DB.words.length > 0 ? (counts[i] / DB.words.length * 100).toFixed(1) : '0.0';
@@ -2179,7 +2180,7 @@ function getLevelBadgeHtml(w) {
     '</span>';
 }
 
-// 重置单词等级（清空 studyCount）
+// 重置单词等级（studyCount 归零）
 function resetWordLevel(id) {
   const w = DB.words.find(x => String(x.id) === String(id));
   if (!w) return;
@@ -3041,7 +3042,7 @@ function openMaxLevelModal() {
   html += '</div>';
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay show';
-  overlay.innerHTML = '<div class="modal-content" style="max-width:420px;"><div class="modal-title" style="font-size:16px;">＋ 添加满级单词</div><div style="font-size:13px;color:var(--gray);margin-bottom:10px;">勾选要直接设为 <b>满级（7级）</b> 的单词，共需 <b>' + LEVEL_THRESHOLDS[LEVEL_THRESHOLDS.length-1] + '</b> 次背诵（30次即满级）。</div>' + html + '<div style="display:flex;gap:10px;margin-top:14px;"><button class="btn btn-primary btn-block" id="mlOk">确认设为满级</button><button class="btn btn-outline btn-block" id="mlCancel">取消</button></div></div>';
+  overlay.innerHTML = '<div class="modal-content" style="max-width:420px;"><div class="modal-title" style="font-size:16px;">＋ 添加满级单词</div><div style="font-size:13px;color:var(--gray);margin-bottom:10px;">勾选要直接设为 <b>满级（7级）</b> 的单词，需净得分 <b>' + LEVEL_THRESHOLDS[LEVEL_THRESHOLDS.length-1] + '</b> 分（记住 +1 / 忘记 −1，满级 32 分）。</div>' + html + '<div style="display:flex;gap:10px;margin-top:14px;"><button class="btn btn-primary btn-block" id="mlOk">确认设为满级</button><button class="btn btn-outline btn-block" id="mlCancel">取消</button></div></div>';
   document.body.appendChild(overlay);
   const close = () => overlay.remove();
   window._mlSelected = {};
@@ -4844,7 +4845,7 @@ function renderWordDetail(w){
   <div class="word-level-block">
     <div class="wl-badge-large word-level-badge lv-${getWordLevel(w)}">${getLevelName(getWordLevel(w))}（${getWordLevel(w)}级）</div>
     <div class="wl-bar-wrap">
-      <div class="wl-info">已背诵 ${getWordStudyCount(w)} 次${getWordLevel(w) < 7 ? ' / 下一级需 ' + getNextLevelReq(getWordLevel(w)) + ' 次' : ' / 已达满级'}</div>
+      <div class="wl-info">等级得分 ${getWordStudyCount(w)} 分${getWordLevel(w) < 7 ? ' / 下一级需 ' + getNextLevelReq(getWordLevel(w)) + ' 分' : ' / 已达满级'}</div>
       <div class="word-level-bar"><div class="word-level-bar-fill" style="width:${getLevelProgress(w).pct}%"></div></div>
     </div>
   </div>
@@ -5473,7 +5474,7 @@ function selectAllNonMaxScope(){
   openRandomScopeModal();
 }
 
-// 取所有未满级单词（7级以下，即 studyCount < 30）
+// 取所有未满级单词（7级以下，即净得分 < 32）
 function getNonMaxWords(){
   const arr = [];
   DB.words.forEach(w=>{ if(getWordLevel(w) < 7) arr.push(w); });
@@ -5646,7 +5647,7 @@ function startStudy() {
   // 三种出题顺序：
   // 顺序 = 按英文首字母字典序（词典顺序），结果稳定
   // 乱序 = 随机打乱
-  // 熟练度优先 = 背诵次数(studyCount)少的先出；次数相同则按英文排序，保证稳定
+  // 熟练度优先 = 等级净得分(studyCount)低的先出；得分相同则按英文排序，保证稳定
   let pool;
   if (studyOrderMode === 'level') {
     pool = [...words].sort(function(a, b) {
@@ -5746,14 +5747,14 @@ function showAnswer() {
 function markWord(remembered) {
   const w = studyQueue[studyIndex];
   if(!w) return;
-  // 等级：每次背诵都 +1（无论记住还是忘记）
+  // 等级积分：记住 +1，忘记 −1（最低 0，不倒扣成负分）；等级由净得分决定
   if(!w.studyCount) w.studyCount = 0;
-  w.studyCount++;
-  // 记忆账本：忘记记 +1，记住记 −0.5（小数），净忘次数向上取整显示；为 0 时不再减（不负数）
   const fc = getFc(w, studyMode);
   if(remembered){
+    w.studyCount = w.studyCount + 1;                          // 记住 +1 分
     fc[studyMode] = Math.max(0, +(fc[studyMode] - 0.5).toFixed(1));   // 记对一次 −0.5
   } else {
+    w.studyCount = Math.max(0, w.studyCount - 1);             // 忘记 −1 分，但不到 0 以下
     fc[studyMode] = fc[studyMode] + 1;                 // 忘记一次 +1
   }
   saveDB();
